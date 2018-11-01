@@ -6,8 +6,12 @@ import numpy as np
 PATHWAYS_PATH = './raw/raw_pathways.csv'
 
 def read_file(filename):
-    df = pd.read_csv(filename, names = ["student_id", "course_id", "quarter_id", \
-         "quarter_name", "dropped", "enroll_major", "final_major"])
+    df = pd.read_csv(
+            filename, names=[
+                "student_id", "course_id", "quarter_id",
+                "quarter_name", "dropped", "enroll_major", "final_major"
+            ]
+        )
     return df
 
 def process_pathways():
@@ -27,9 +31,7 @@ def process_pathways():
 
     # Initializing data matrix used to construct graphss
     data_matrix = np.zeros((num_students,num_classes))
-    df_grouped = df.groupby('student_id').apply(pd.DataFrame.sort_values,'quarter_id')
-    for group in df_grouped:
-        print(group)
+    df_grouped = df.groupby('student_id').apply(pd.DataFrame.sort_values, 'quarter_id')
 
 @click.command()
 @click.argument('network_name')
