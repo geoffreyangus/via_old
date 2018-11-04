@@ -31,7 +31,14 @@ def process_pathways():
 
     # Initializing data matrix used to construct graphss
     data_matrix = np.zeros((num_students,num_classes))
-    df_grouped = df.groupby('student_id').apply(pd.DataFrame.sort_values, 'quarter_id')
+    df_grouped = df.groupby('student_id')
+    for name,group in df_grouped:
+        print(name)
+        print(group)
+        exit()
+
+    #apply(pd.DataFrame.sort_values, 'quarter_id')
+    #print(df_grouped)
 
 @click.command()
 @click.argument('network_name')
