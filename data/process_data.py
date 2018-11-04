@@ -34,8 +34,14 @@ def process_pathways():
     num_classes = len(classes_list)
     print("Number of students {} number of classes {}".format(num_students,num_classes))
 
-    # Initializing data matrix used to construct graphss
-    data_matrix = np.zeros((num_students,num_classes)) * -1 
+    '''
+    Initializing data matrix used to construct graphs, all entries of the
+    matrix are intialized to 0. If a student has not taken a class then
+    this will be marked as 0. Only values greater than 1 are valid timesteps.
+    '''
+
+    data_matrix = np.zeros((num_students,num_classes))
+
     student_counter = 0
     df_grouped = df.groupby('student_id')
     for name, group in df_grouped:
@@ -46,7 +52,7 @@ def process_pathways():
         classes_completed = classes_completed.sort_values('quarter_id')
 
         quarter_grouped = classes_completed.groupby('quarter_id')
-        time_step = 0
+        time_step = 1 # Timestep intialized at 1
         for quarter, group in quarter_grouped:
             for index,row in group.iterrows():
                 curr_course_index = class_to_index[row["course_id"]]
