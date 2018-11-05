@@ -65,18 +65,9 @@ def process_pathways():
     with open('data/processed/student_class_dict.pkl', 'wb') as handle:
         pickle.dump(class_to_index, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-def analyze_sequence_matrix():
-    df = read_file(PATHWAYS_PATH)
-    classes_list = sorted(df["course_id"].unique())
-    sequence_matrix = np.load('./data/processed/sequence_matrix.npy')
-    course_most_enrolled_index = sequence_matrix.sum(axis=0).argmax()
-    print('Most enrolled course is {}'.format(classes_list[course_most_enrolled_index]))
-
 @click.command()
 @click.argument('network_name')
 def main(network_name):
-    if network_name == 'analysis':
-        analyze_sequence_matrix()
     if network_name == 'pathways':
         process_pathways()
     print('Processing complete.')
