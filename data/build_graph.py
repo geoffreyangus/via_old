@@ -4,7 +4,7 @@ __author__ = "Richard Diehl Martinez, Geoffrey Angus"
 Builds a bipartite graph from a temporal matrix where each row of the
 matrix corresponds to a student and each column corresponds to a certain class.
 The entries of the matrix then indicate at which timestep a student completed
-a certain class. Timesteps begin at 1 and indicate the the amont of quarters
+a certain class. Timesteps begin at 1 and indicate the the amount of quarters
 a student has attended Stanford.
 '''
 
@@ -84,8 +84,9 @@ def create_bipartite_graph():
     '''
     Generates a basic bipartite graph which maps the relationship between
     which students have taken which classes. The two types on nodes in the graph
-    correspond to 1) Stanford students and 2) Stanford classes. An undirected edge is
-    drawn between a student node and a class if that student has taken that class.
+    correspond to 1) Stanford students and 2) Stanford classes. An undirected
+    edge is drawn between a student node and a class if that student has taken
+    that class.
 
     args:
         None

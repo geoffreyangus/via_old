@@ -103,6 +103,10 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Data folder 
+# data folder
 data/raw
 data/processed
+data/graphs
+
+# for Geoff, vscode
+.vscode/
