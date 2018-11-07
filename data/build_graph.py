@@ -11,8 +11,18 @@ a student has attended Stanford.
 # imports
 import click
 import snap
+import pickle
 import numpy as np
 from collections import Counter
+from util import read_pathways
+
+def add_prerequisite(G, class_tuple):
+    past_class, curr_class = class_tuple
+    if not G.IsNode(past_class):
+        G.AddNode(past_class)
+    if not G.IsNode(curr_class):
+        G.AddNode(curr_class)
+    G.AddEdge(past_class,curr_class)
 
 def load_matrix(type="sequence"):
     '''
@@ -28,7 +38,124 @@ def load_matrix(type="sequence"):
     else:
         raise Exception('Invalid data matrix of type: {}'.format(type))
 
-def create_prereq_graph():
+def zscore_norm(M, epsilon=1e-5):
+    print('Running Z-score normalization...')
+    # Here we attempt a version of batch normalization to address point 1
+    mu = np.mean(M)
+    sd = np.var(M)
+    # Class scores normalized
+    M = (M - mu) / np.sqrt(sd + epsilon)
+    return M
+
+def degree_norm(M, epsilon=1e-5):
+    print('Running degree normalization...')
+    # Degree normalization. Normalizing inbound edges overreps weak src nodes.
+    Din  = np.diag(np.sum(M, axis=0))
+    Dout = np.diag(np.sum(M, axis=1))
+
+    # D^(-1/2), special property of diagonals
+    Din  = np.reciprocal(np.sqrt(Din), where=Din!=0)
+    Dout = np.reciprocal(np.sqrt(Dout), where=Dout!=0)
+
+    DinM = np.matmul(Din, M)
+    DinMDout = np.matmul(DinM, Dout)
+
+    return DinMDout
+
+def gen_prereq_discount(gamma=0.9, enrollment_threshold=1000):
+    """Augments the baseline graph by considering more distant relationships.
+
+    We will do this through normalized score summation where score is some
+    value gamma that exponentially decays with each timestep.
+
+    Returns:
+        * Graph (SNAP TNGraph): Directed snap graph which estasblishes a
+            baseline prerequisite relationship network between individiual
+            classes
+    """
+    sequence_matrix = load_matrix()
+    num_students, num_classes = sequence_matrix.shape
+
+    # class_totals[i] is the enrollment count of class i
+    class_totals = np.count_nonzero(sequence_matrix, axis=0)
+    # print(class_totals[10339])
+    # print(class_totals[10640])
+    # exit()
+
+    # class_scores[i][j] keeps track of time-normalized frequency of class i to k
+    class_scores = np.zeros((num_classes, num_classes))
+    # class_predecessor[i][j] keeps track of how many times class i taken before j
+    class_predecessor = np.zeros((num_classes, num_classes))
+
+    for i in range(num_students):
+        if i % 1000 == 0:
+            print("Processed {} number of students...".format(i))
+        sequence = sequence_matrix[i]
+        course_idxs = np.nonzero(sequence)[0]
+        # Stores the sequence in (timestep, class_idx) tuple
+        sequence = [(sequence[course_idx], course_idx) for course_idx in course_idxs]
+        # Sorted in reverse to improve readability
+        sequence = sorted(sequence, key=lambda x: x[0], reverse=True)
+
+        for j in range(len(sequence)):
+            curr_t, curr_class_idx = sequence[j]
+            # Skip classes that lack sufficient data
+            if class_totals[curr_class_idx] < enrollment_threshold:
+                continue
+            # Move down the list by index
+            for prev_t, prev_class_idx in sequence[j:]:
+                # Skip classes that lack sufficient data
+                if class_totals[prev_class_idx] < enrollment_threshold:
+                    continue
+
+                # Only increment score if the class is taken at a prior timestep
+                if prev_t < curr_t:
+                    # Amount of time between course enrollment
+                    distance = curr_t - prev_t
+
+                    # To facilitate indexing
+                    curr_t = int(curr_t)
+                    prev_t = int(prev_t)
+
+                    class_predecessor[prev_class_idx][curr_class_idx] += 1.0
+                    # Exponential decay as distance increases
+                    class_scores[prev_class_idx][curr_class_idx] += gamma ** distance
+
+    # Summing down the columns "normalizes" the outbound edge weights to 1
+    """
+    Existing issues:
+    1. MATH51 -> everything. Just because a node precedes everything doesn't make it a prerequisite for everything
+        a. We can solve this through some sort of normalization. First thought was to normalize the outbound edges
+            However, this leads to overly strong source nodes with few edges.
+        b. We can normalize the inbound edges. Again however, this strengthens sink nodes with few inbound edges
+            disproportionately.
+        c. What we need is some sort of partial normalization that doesn't take away the power of frequency entirely.
+        d. Maybe we should do a sweeping discount to anything taken in the first year, lol
+    2. Where is CS229? Some classes are not appearing in this list because they are niche courses that see less
+        commonalities in coursework and also higher long-term prerequisite relationships.
+        a. At this point, we can probably start leveraging the graph structure in order to boost scores. I am thinking
+            something along the lines of PageRank.
+        b. If a class with a lot of prerequisites (like CS221) is frequently taken before 229 (but not cracking the
+            top 300), there should be some sort of boosting that occurs due to CS221's "weight" as a grad-level course.
+    """
+
+    # class_scores = zscore_norm(class_scores)
+    # class_scores = degree_norm(class_scores)
+
+    Graph = snap.TNGraph.New()
+    # Pulls out the 300 highest scoring class pairs.
+    print("Ranking 300 highest scoring class pairs...")
+    for i in range(300):
+        prev_id, curr_id = np.unravel_index(
+            np.argmax(class_scores), class_scores.shape
+        )
+        # Set class score to 0 to avoid interference in subsequent iterations
+        class_scores[prev_id][curr_id] = 0
+        add_prerequisite(Graph, (prev_id, curr_id))
+
+    return Graph
+
+def gen_prereq_baseline():
     '''
     Generates a baseline prereq graph which establishes prerequisite by
     observing classes which are most frequently taken after each other.
@@ -43,7 +170,6 @@ def create_prereq_graph():
 
     sequence_matrix = load_matrix()
     matrix_shape = sequence_matrix.shape
-    largest_timestep = sequence_matrix.max()
 
     Graph = snap.TNGraph.New()
     # Keep track of all classes taken 1-timestep apart from each other
@@ -71,12 +197,7 @@ def create_prereq_graph():
 
     for timestep in sorted_timestep_counts[:300]:
         class_tuple = timestep[0]
-        first_class,second_class = class_tuple
-        if not Graph.IsNode(first_class):
-            Graph.AddNode(first_class)
-        if not Graph.IsNode(second_class):
-            Graph.AddNode(second_class)
-        Graph.AddEdge(first_class,second_class)
+        add_prerequisite(Graph, class_tuple)
 
     return Graph
 
@@ -115,18 +236,61 @@ def create_bipartite_graph():
 
     return Graph
 
-@click.command()
-@click.argument('graph_type')
-def main(graph_type):
-    Graph = None
+def create_graph(graph_type):
+    '''
+    Creates a graph given a keyword. Raises an exception if keyword is invalid.
+    '''
     if graph_type == 'bipartite':
         Graph = create_bipartite_graph()
         print("Created Bipartite graph")
-    elif graph_type == 'prereq':
-        Graph = create_prereq_graph()
-        print("Created Prereq graph")
+    elif graph_type == 'baseline':
+        Graph = gen_prereq_baseline()
+        print("Created baseline prerequisite graph")
+    elif graph_type == 'discount':
+        Graph = gen_prereq_discount()
+        print("Created discount prerequisite graph")
     else:
         raise Exception('Invalid graph type provided: {}'.format(graph_type))
+    return Graph
+
+def load_graph(graph_type):
+    '''
+    Loads a graph given a keyword. Raises an exception if keyword is invalid.
+    '''
+    if graph_type == 'baseline':
+        Graph = snap.LoadEdgeList(snap.PNGraph, './data/graphs/prereq.txt', 0, 1, '\t')
+        print("Loaded baseline prerequisite graph.")
+    elif graph_type == 'discount':
+        Graph = snap.LoadEdgeList(snap.PNGraph, './data/graphs/prereq.txt', 0, 1, '\t')
+        print("Loaded discount augmented prerequisite graph.")
+    else:
+        raise Exception('Invalid graph type provided: {}'.format(graph_type))
+    return Graph
+
+def analyze_graph(G):
+    df = read_pathways()
+    class_list = sorted(df["course_id"].unique())
+
+    for edge in G.Edges():
+        src = edge.GetSrcNId()
+        dst = edge.GetDstNId()
+        print('({}) {}\t->\t{} ({}).'.format(src, class_list[src], class_list[dst], dst))
+
+
+@click.command()
+@click.argument('graph_type')
+@click.option(
+    '--create_graphs/--no_create_graphs',
+    default=False
+)
+def main(graph_type, create_graphs):
+    Graph = None
+    if create_graphs:
+        Graph = create_graph(graph_type)
+        analyze_graph(Graph)
+    else:
+        Graph = load_graph(graph_type)
+        analyze_graph(Graph)
 
 if __name__ == '__main__':
     main()
