@@ -62,7 +62,10 @@ def degree_norm(M, epsilon=1e-5):
 
     return DinMDout
 
-def gen_prereq_discount(gamma=0.9, enrollment_threshold=1000):
+def enrollment_norm(M, v):
+
+
+def gen_prereq_discount(gamma=0.9, post_penalty=True):
     """Augments the baseline graph by considering more distant relationships.
 
     We will do this through normalized score summation where score is some
@@ -99,27 +102,21 @@ def gen_prereq_discount(gamma=0.9, enrollment_threshold=1000):
 
         for j in range(len(sequence)):
             curr_t, curr_class_idx = sequence[j]
-            # Skip classes that lack sufficient data
-            if class_totals[curr_class_idx] < enrollment_threshold:
-                continue
             # Move down the list by index
             for prev_t, prev_class_idx in sequence[j:]:
-                # Skip classes that lack sufficient data
-                if class_totals[prev_class_idx] < enrollment_threshold:
-                    continue
+                # To facilitate indexing
+                curr_t = int(curr_t)
+                prev_t = int(prev_t)
 
-                # Only increment score if the class is taken at a prior timestep
+                # Amount of time between course enrollment
+                distance = curr_t - prev_t
                 if prev_t < curr_t:
-                    # Amount of time between course enrollment
-                    distance = curr_t - prev_t
+                    # Exponentially decreasing reward as distance increases
+                    class_scores[prev_class_idx][curr_class_idx] += (gamma ** distance)
+                if post_penalty:
+                    # Exponentially increasing penalty as distance increases
+                    class_scores[curr_class_idx][prev_class_idx] -= (gamma ** distance)
 
-                    # To facilitate indexing
-                    curr_t = int(curr_t)
-                    prev_t = int(prev_t)
-
-                    class_predecessor[prev_class_idx][curr_class_idx] += 1.0
-                    # Exponential decay as distance increases
-                    class_scores[prev_class_idx][curr_class_idx] += gamma ** distance
 
     # Summing down the columns "normalizes" the outbound edge weights to 1
     """
@@ -139,8 +136,14 @@ def gen_prereq_discount(gamma=0.9, enrollment_threshold=1000):
             top 300), there should be some sort of boosting that occurs due to CS221's "weight" as a grad-level course.
     """
 
+    # Penalty for insufficient data for normalization (subtracting 1 / |enrollment_courses|)
+    # Penalty for NOT taking a course afterwards
+    # Incorporating priors (how likely were they to take 106B anyway?)
+
+
     # class_scores = zscore_norm(class_scores)
     # class_scores = degree_norm(class_scores)
+    class_scores = enrollment_norm(class_scores, class_totals)
 
     Graph = snap.TNGraph.New()
     # Pulls out the 300 highest scoring class pairs.
