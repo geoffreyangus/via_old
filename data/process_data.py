@@ -3,17 +3,7 @@ import click
 import pandas as pd
 import numpy as np
 import pickle
-
-PATHWAYS_PATH = 'data/raw/raw_pathways.csv'
-
-def read_file(filename):
-    df = pd.read_csv(
-            filename, names=[
-                "student_id", "course_id", "quarter_id",
-                "quarter_name", "dropped", "enroll_major", "final_major"
-            ]
-        )
-    return df
+from util import read_pathways
 
 def process_pathways():
     """Processes the raw_pathways.csv file into a temporal matrix.
@@ -26,7 +16,7 @@ def process_pathways():
             a. Generate numpy matrix
     """
 
-    df = read_file(PATHWAYS_PATH)
+    df = read_pathways()
     student_list = df["student_id"].unique()
     classes_list = sorted(df["course_id"].unique())
     class_to_index = {j:i for i,j in enumerate(classes_list)}
@@ -37,7 +27,7 @@ def process_pathways():
     '''
     Initializing data matrix used to construct graphs, all entries of the
     matrix are intialized to 0. If a student has not taken a class then
-    this will be marked as 0. Only values greater than 1 are valid timesteps.
+    this will be marked as 0. Only values of at least 1 are valid timesteps.
     '''
 
     data_matrix = np.zeros((num_students,num_classes))
@@ -63,7 +53,7 @@ def process_pathways():
         student_counter += 1
     np.save('data/processed/sequence_matrix', data_matrix)
     with open('data/processed/student_class_dict.pkl', 'wb') as handle:
-        pickle.dump(class_to_index, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(class_to_index, handle, protocol=2)
 
 @click.command()
 @click.argument('network_name')
