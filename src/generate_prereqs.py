@@ -13,39 +13,13 @@ import time
 import os
 
 import click
-import pickle
 import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
 
+from data.loader import load_graph, load_matrix
+from analysis.projections import PrereqGraphAnalyzer
 from projection_models.baseline import Baseline
 from projection_models.discount import Discount
 from projection_models.discount_normalized import DiscountNormalized
-
-PATHWAYS_PATH = os.path.join(os.getcwd(), '..', 'data/raw/raw_pathways.csv')
-
-def load_pathways():
-    df = pd.read_csv(
-            PATHWAYS_PATH, names=[
-                "student_id", "course_id", "quarter_id",
-                "quarter_name", "dropped", "enroll_major", "final_major"
-            ]
-        )
-    return df
-
-def load_matrix(type="sequence"):
-    '''
-    Loads in a matrix representation of which students took which classes
-    at what point in their Stanford careers.
-
-    args:
-        * type (String): The type of data matrix representation graph
-            that should be loaded in. Defaults to "sequence" matrix.
-    '''
-    if type == 'sequence':
-        return np.load('./data/processed/sequence_matrix.npy')
-    else:
-        raise Exception('Invalid data matrix of type: {}'.format(type))
 
 def create_bipartite_graph():
     '''
@@ -113,40 +87,6 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
         num_iter += 1
     return null_matrix
 
-def load_graph(load_dir):
-    '''
-    Loads a graph given a keyword. Raises an exception if keyword is invalid.
-    '''
-    G = snap.LoadEdgeList(snap.PNGraph, load_dir, 0, 1, '\t')
-    return G
-
-def analyze_graph(G, scores_list, save_dir):
-    df = load_pathways()
-
-    class_list = sorted(df["course_id"].unique())
-    scores_list = sorted(scores_list, key=lambda x: x[1], reverse=True)
-    with open(os.path.join(save_dir, 'report.txt'), 'w+') as f:
-        for edge, score in scores_list:
-            src, dst = edge
-            f.write(
-                '({}) {}\t->\t{} ({})\t - score: {}\n'.format(
-                    src,
-                    class_list[src],
-                    class_list[dst],
-                    dst,
-                    score,
-                )
-            )
-    plt.plot(
-        np.array(range(len(scores_list))),
-        np.array([x[1] for x in scores_list]),
-        alpha=0.5
-    )
-    plt.xlabel('Edge Ranking')
-    plt.ylabel('Prerequisite Score')
-    plt.title('Top {} Edges in Prerequisite Graph'.format(len(scores_list)))
-    plt.savefig(os.path.join(save_dir, 'plot'))
-
 @click.command()
 @click.argument('graph_type')
 @click.option(
@@ -174,14 +114,12 @@ def main(
     save_graph):
     timestamp = int(time.time())
 
+
+    a = PrereqGraphAnalyzer()
+
     if load_dir:
         G = load_graph(load_dir)
-        c = snap.GetClusterCf(G)
-        print(
-            "The graph at directory {} has clustering coefficient {}".format(
-                load_dir, c
-            )
-        )
+        a.analyze_major_cfs(G)
         return
 
     parent_directory = os.path.join(os.getcwd(), '..')
@@ -229,7 +167,7 @@ def main(
         save_path=graph_path
     )
 
-    analyze_graph(G, scores_list, save_dir)
+    a.analyze_graph(G, scores_list, save_dir)
     return G
 
 if __name__ == '__main__':

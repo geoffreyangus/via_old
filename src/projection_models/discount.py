@@ -21,16 +21,15 @@ import snap
 import numpy as np
 
 class Discount():
-    def __init__(self,
+    def __init__(
+        self,
         adj_matrix,
-        k=300,
         gamma=0.9
     ):
 
         self.adj_matrix = adj_matrix
         self.gamma = gamma
         self.G = snap.TNGraph.New()
-        self.k = k
 
     def add_prerequisite(self, class_tuple):
         past_class, curr_class = class_tuple
@@ -40,7 +39,7 @@ class Discount():
             self.G.AddNode(curr_class)
         self.G.AddEdge(past_class,curr_class)
 
-    def generate_graph(self, k=None):
+    def generate_graph(self, k, save_path=None):
         """Augments the baseline graph by considering more distant relationships.
 
         We will do this through normalized score summation where score is some
@@ -83,18 +82,26 @@ class Discount():
                         # Exponentially decreasing reward as distance increases
                         class_scores[prev_class_idx][curr_class_idx] += (self.gamma ** distance)
 
-        # Pulls out the 300 highest scoring class pairs.
-        print("Ranking k highest scoring class pairs...")
-        self.k = num_classes * num_classes if self.k is None else self.k
-        for i in range(self.k):
+        scores_list = []
+        k = num_classes * num_classes if k is None else k
+        for i in range(k):
             prev_id, curr_id = np.unravel_index(
                 np.argmax(class_scores), class_scores.shape
             )
+
+            new_edge = (prev_id, curr_id)
+            score = class_scores[prev_id][curr_id]
+
+            scores_list.append((new_edge, score))
+            self.add_prerequisite(new_edge)
+
             # Set class score to 0 to avoid interference in subsequent iterations
             class_scores[prev_id][curr_id] = 0
-            self.add_prerequisite((prev_id, curr_id))
 
-        return self.G
+        if save_path:
+            snap.SaveEdgeList(self.G, save_path)
+
+        return self.G, scores_list
 
     def get_graph(self):
         if self.G.GetNodes() == 0:

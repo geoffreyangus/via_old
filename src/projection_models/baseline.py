@@ -6,11 +6,9 @@ class Baseline():
     def __init__(
         self,
         adj_matrix,
-        k=300
     ):
         self.adj_matrix = adj_matrix
         self.G = snap.TNGraph.New()
-        self.k = k
 
     def add_prerequisite(self, class_tuple):
         past_class, curr_class = class_tuple
@@ -20,7 +18,7 @@ class Baseline():
             self.G.AddNode(curr_class)
         self.G.AddEdge(past_class,curr_class)
 
-    def generate_graph(self):
+    def generate_graph(self, k, save_path=None):
         '''
         Generates a baseline prereq graph which establishes prerequisite by
         observing classes which are most frequently taken after each other.
@@ -62,7 +60,10 @@ class Baseline():
             class_tuple = timestep[0]
             self.add_prerequisite(class_tuple)
 
-        return self.G
+        if save_path:
+            snap.SaveEdgeList(self.G, save_path)
+
+        return self.G, sorted_timestep_counts[:k]
 
     def get_graph(self):
         if self.G.GetNodes() == 0:
