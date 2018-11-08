@@ -9,7 +9,6 @@ class DiscountNormalized():
     def __init__(
         self,
         adj_matrix,
-        k=300,
         gamma=0.9,
         post_penalty=True
     ):
@@ -18,7 +17,6 @@ class DiscountNormalized():
         self.gamma = gamma
         self.post_penalty = post_penalty
         self.G = snap.TNGraph.New()
-        self.k = k
 
     def add_prerequisite(self, class_tuple):
         past_class, curr_class = class_tuple
@@ -60,16 +58,20 @@ class DiscountNormalized():
         DMD = np.matmul(DM, np.eye(D.shape[0]))
         return DMD
 
-    def generate_graph(self):
+    def generate_graph(self, k, save_path=None):
         """Augments the baseline graph by considering more distant relationships.
 
         We will do this through normalized score summation where score is some
         value gamma that exponentially decays with each timestep.
 
+        Args:
+            k (int): The number of edges sorted by weight to generate.
+            save_path (str): Save location. If None, the graph does not save.
+
         Returns:
-            * Graph (SNAP TNGraph): Directed snap graph which estasblishes a
-                baseline prerequisite relationship network between individiual
-                classes
+            * Graph (SNAP TNGraph): Directed snap graph which establishes a
+                baseline prerequisite relationship network between individual
+                classes.
         """
         num_students, num_classes = self.adj_matrix.shape
         # class_totals[i] is the enrollment count of class i
@@ -111,7 +113,16 @@ class DiscountNormalized():
 
         # Penalty for insufficient data for normalization (subtracting 1 / |enrollment_courses|)
         # Penalty for NOT taking a course afterwards
-        # Incorporating priors (how likely were they to take 106B anyway?)
+
+        """
+        TODO: Incorporating priors (how likely were they to take 106B anyway?)
+
+        prior = |enrollment in 106B| / |total enrollment in all classes|
+
+        This fraction could be useful in normalization of data-insufficient
+        classes. This could also, however, cause overrepresentation of
+        very frequently taken classes. Something to be explored.
+        """
 
 
         # class_scores = zscore_norm(class_scores)
@@ -119,16 +130,27 @@ class DiscountNormalized():
         class_scores = self.enrollment_norm(class_scores, class_totals)
         # Pulls out the 300 highest scoring class pairs.
         print("Ranking k highest scoring class pairs...")
-        self.k = num_classes * num_classes if self.k is None else self.k
-        for i in range(self.k):
+
+        scores_list = []
+        k = num_classes * num_classes if k is None else k
+        for i in range(k):
             prev_id, curr_id = np.unravel_index(
                 np.argmax(class_scores), class_scores.shape
             )
+
+            new_edge = (prev_id, curr_id)
+            score = class_scores[prev_id][curr_id]
+
+            scores_list.append((new_edge, score))
+            self.add_prerequisite(new_edge)
+
             # Set class score to 0 to avoid interference in subsequent iterations
             class_scores[prev_id][curr_id] = 0
-            self.add_prerequisite((prev_id, curr_id))
 
-        return self.G
+        if save_path:
+            snap.SaveEdgeList(self.G, save_path)
+
+        return self.G, scores_list
 
     def get_graph(self):
         if self.G.GetNodes() == 0:

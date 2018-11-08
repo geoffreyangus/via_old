@@ -9,12 +9,14 @@ a student has attended Stanford.
 '''
 
 # imports
+import time
+import os
+
 import click
 import pickle
 import numpy as np
 import pandas as pd
-import time
-import os
+from matplotlib import pyplot as plt
 
 from projection_models.baseline import Baseline
 from projection_models.discount import Discount
@@ -78,7 +80,7 @@ def create_bipartite_graph():
                 Graph.AddEdge(student_id,class_id)
     return Graph
 
-def create_null_matrix(adjacency_matrix, sample_size = 1000):
+def create_null_matrix(adjacency_matrix, sample_size=1000):
     '''
     Creates a sequence matrix that samples a sequence of classes taken
     for sample_size number of students. At each time step a student is assumed to
@@ -99,37 +101,51 @@ def create_null_matrix(adjacency_matrix, sample_size = 1000):
     null_matrix = np.zeros((sample_size,num_courses))
     courses_per_quarter = 4
     quarter_per_degree = 12
+    num_iter = 0
     for student in range(sample_size):
+        if num_iter % 1000 == 0:
+            print("Generated {} random samples of student data...".format(num_iter))
         for quarter in range(1,quarter_per_degree+1):
             courses = np.random.choice(num_courses, courses_per_quarter, replace=False)
             for j in range(courses_per_quarter):
                 course = courses[j]
                 null_matrix[student,course] = quarter
+        num_iter += 1
     return null_matrix
 
-def load_graph(graph_type):
+def load_graph(load_dir):
     '''
     Loads a graph given a keyword. Raises an exception if keyword is invalid.
     '''
-    if graph_type == 'baseline':
-        Graph = snap.LoadEdgeList(snap.PNGraph, './data/graphs/prereq.txt', 0, 1, '\t')
-        print("Loaded baseline prerequisite graph.")
-    elif graph_type == 'discount':
-        Graph = snap.LoadEdgeList(snap.PNGraph, './data/graphs/prereq.txt', 0, 1, '\t')
-        print("Loaded discount augmented prerequisite graph.")
-    else:
-        raise Exception('Invalid graph type provided: {}'.format(graph_type))
-    return Graph
+    G = snap.LoadEdgeList(snap.PNGraph, load_dir, 0, 1, '\t')
+    return G
 
-def analyze_graph(G):
+def analyze_graph(G, scores_list, save_dir):
     df = load_pathways()
+
     class_list = sorted(df["course_id"].unique())
-    experiments_path = os.path.join(os.getcwd(), '..', 'experiments')
-    with open(os.path.join(experiments_path, str(int(time.time()))), 'w+') as f:
-        for edge in G.Edges():
-            src = edge.GetSrcNId()
-            dst = edge.GetDstNId()
-            f.write('({}) {}\t->\t{} ({})\n'.format(src, class_list[src], class_list[dst], dst))
+    scores_list = sorted(scores_list, key=lambda x: x[1], reverse=True)
+    with open(os.path.join(save_dir, 'report.txt'), 'w+') as f:
+        for edge, score in scores_list:
+            src, dst = edge
+            f.write(
+                '({}) {}\t->\t{} ({})\t - score: {}\n'.format(
+                    src,
+                    class_list[src],
+                    class_list[dst],
+                    dst,
+                    score,
+                )
+            )
+    plt.plot(
+        np.array(range(len(scores_list))),
+        np.array([x[1] for x in scores_list]),
+        alpha=0.5
+    )
+    plt.xlabel('Edge Ranking')
+    plt.ylabel('Prerequisite Score')
+    plt.title('Top {} Edges in Prerequisite Graph'.format(len(scores_list)))
+    plt.savefig(os.path.join(save_dir, 'plot'))
 
 @click.command()
 @click.argument('graph_type')
@@ -143,26 +159,50 @@ def analyze_graph(G):
     default=True
 )
 @click.option(
-    '--load_graph/--no_load_graph',
+    '--load_dir',
+    default=''
+)
+@click.option(
+    '--save_graph/--no_save_graph',
     default=False
 )
-def main(graph_type, graph_size, load_sequence, load_graph):
-    if load_graph:
-        print("The --load_graph flag is currently under development. Exiting.")
+def main(
+    graph_type,
+    graph_size,
+    load_sequence,
+    load_dir,
+    save_graph):
+    timestamp = int(time.time())
+
+    if load_dir:
+        G = load_graph(load_dir)
+        c = snap.GetClusterCf(G)
+        print(
+            "The graph at directory {} has clustering coefficient {}".format(
+                load_dir, c
+            )
+        )
         return
 
     parent_directory = os.path.join(os.getcwd(), '..')
+    save_dir = '{}-{}-{}'.format(
+        timestamp,
+        graph_type + ('' if load_sequence else '-null'),
+        graph_size
+    )
+    save_dir = os.path.join(parent_directory, 'experiments', save_dir)
+    os.makedirs(save_dir)
 
     adj_matrix = np.load(
-            os.path.join(
-                parent_directory,
-                'data/processed/sequence_matrix.npy'
-            )
+        os.path.join(
+            parent_directory,
+            'data/processed/sequence_matrix.npy'
         )
+    )
 
     if not load_sequence:
         print("Generating null model...")
-        adj_matrix = create_null_matrix(adj_matrix)
+        adj_matrix = create_null_matrix(adj_matrix, sample_size=50000)
 
     # if graph_type == 'bipartite':
     #     Graph = create_bipartite_graph()
@@ -177,8 +217,19 @@ def main(graph_type, graph_size, load_sequence, load_graph):
     else:
         raise Exception('Invalid graph type provided: {}'.format(graph_type))
 
-    G = model.generate_graph()
-    analyze_graph(G)
+    graph_path = None
+    if save_graph:
+        graph_path = os.path.join(
+            save_dir,
+            'graph'
+        )
+
+    G, scores_list = model.generate_graph(
+        graph_size,
+        save_path=graph_path
+    )
+
+    analyze_graph(G, scores_list, save_dir)
     return G
 
 if __name__ == '__main__':
