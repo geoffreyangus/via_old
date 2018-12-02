@@ -76,7 +76,7 @@ class DiscountNormalized():
         num_students, num_classes = self.adj_matrix.shape
         # class_totals[i] is the enrollment count of class i
         class_totals = np.count_nonzero(self.adj_matrix, axis=0)
-        # class_scores[i][j] keeps track of time-normalized frequency of class i to k
+        # class_scores[i][j] keeps track of time-normalized frequency of class i to j
         class_scores = np.zeros((num_classes, num_classes))
         # class_predecessor[i][j] keeps track of how many times class i taken before j
         class_predecessor = np.zeros((num_classes, num_classes))

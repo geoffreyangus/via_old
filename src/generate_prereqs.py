@@ -98,10 +98,7 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
     '--load_sequence/--random_sequence',
     default=True
 )
-@click.option(
-    '--load_dir',
-    default=''
-)
+
 @click.option(
     '--save_graph/--no_save_graph',
     default=False
@@ -110,19 +107,11 @@ def main(
     graph_type,
     graph_size,
     load_sequence,
-    load_dir,
-    save_graph):
+    save_graph,
+):
     timestamp = int(time.time())
-
-
-    a = PrereqGraphAnalyzer()
-
-    if load_dir:
-        G = load_graph(load_dir)
-        a.analyze_major_cfs(G)
-        return
-
     parent_directory = os.path.join(os.getcwd(), '..')
+
     save_dir = '{}-{}-{}'.format(
         timestamp,
         graph_type + ('' if load_sequence else '-null'),
@@ -167,6 +156,7 @@ def main(
         save_path=graph_path
     )
 
+    a = PrereqGraphAnalyzer()
     a.analyze_graph(G, scores_list, save_dir)
     return G
 
