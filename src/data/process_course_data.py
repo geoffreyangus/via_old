@@ -70,7 +70,7 @@ def main():
     data = read_descriptions()
     course_idx_dict = pickle.load(open(class_index_path, "r"))
     prereq_matrix = parse_descriptions(data,course_idx_dict)
-    np.save('data/processed/sequence_matrix', groundtruth_matrix)
+    np.save('data/processed/gt_matrix', prereq_matrix)
 
 if __name__ == '__main__':
     main()
