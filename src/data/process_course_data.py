@@ -17,6 +17,13 @@ import numpy as np
 course_description_path = 'data/raw/crse_descriptions.csv'
 class_index_path = 'data/processed/student_class_dict.pkl'
 
+# analysis utils
+
+def count_symmetries(mat):
+    baseline_zeros = np.count_nonzero(mat)
+    processed_zeros = np.count_nonzero(mat.transpose() - mat)
+    return processed_zeros - baseline_zeros
+
 def parse_descriptions(data, course_idx_dict):
     '''
     Parses out the courses that are mentioned as prerequisites in the
@@ -54,11 +61,13 @@ def parse_descriptions(data, course_idx_dict):
                 except:
                     continue
                 #print("{} before {}".format(candidate_id,curr_course_id))
-                prereq_matrix[candidate_course_index,curr_course_index] += 1
+                prereq_matrix[candidate_course_index,curr_course_index] = 1
 
-    unique_prereqs =  np.count_nonzero(prereq_matrix)
+    np.fill_diagonal(prereq_matrix, 0)
+    print("Number of bi-directional edges: {}".format(count_symmetries(prereq_matrix)))
+
+    unique_prereqs = np.count_nonzero(prereq_matrix)
     print("{} number of unique prerequisites found out of {} descriptions".format(unique_prereqs,index))
-
     return prereq_matrix
 
 def read_descriptions():
