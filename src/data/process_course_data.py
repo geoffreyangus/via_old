@@ -13,6 +13,7 @@ import click
 import pandas as pd
 import pickle
 import numpy as np
+import snap
 
 course_description_path = 'data/raw/crse_descriptions.csv'
 class_index_path = 'data/processed/student_class_dict.pkl'
@@ -24,7 +25,7 @@ def count_symmetries(mat):
     processed_zeros = np.count_nonzero(mat.transpose() - mat)
     return (processed_zeros - baseline_zeros)/2
 
-def parse_descriptions(data, course_idx_dict):
+def parse_descriptions(data, course_idx_dict, verbose=False):
     '''
     Parses out the courses that are mentioned as prerequisites in the
     course description dataset.
@@ -64,10 +65,11 @@ def parse_descriptions(data, course_idx_dict):
                 prereq_matrix[candidate_course_index,curr_course_index] = 1
 
     np.fill_diagonal(prereq_matrix, 0)
-    print("Number of bi-directional edges: {}".format(count_symmetries(prereq_matrix)))
+    if verbose:
+        print("Number of bi-directional edges: {}".format(count_symmetries(prereq_matrix)))
 
     unique_prereqs = np.count_nonzero(prereq_matrix)
-    print("{} number of unique prerequisites found out of {} descriptions".format(unique_prereqs,index))
+    print("{} prerequisites extracted out of {} descriptions".format(unique_prereqs,index))
     return prereq_matrix
 
 def read_descriptions():
@@ -75,9 +77,16 @@ def read_descriptions():
 
 def create_graph(prereq_matrix):
     G = snap.TNGraph.New()
-    for i range(prereq_matrix.shape[0]):
+    for i in range(prereq_matrix.shape[0]):
+        G.AddNode(i)
+    for i in range(prereq_matrix.shape[0]):
         for j in range(i):
-            #@`FFFUUUU~~~~~~CKkkkKKKKK`<=======3
+            if prereq_matrix[i,j] == 1:
+                G.AddEdge(i,j)
+    assert(os.path.isdir("experiments"))
+    if not os.path.exists("experiments/ground_truth"):
+        os.mkdir("experiments/ground_truth")
+    snap.SaveEdgeList(G, "experiments/ground_truth/graph")
 
 @click.command()
 def main():
@@ -86,6 +95,7 @@ def main():
     course_idx_dict = pickle.load(open(class_index_path, "r"))
     prereq_matrix = parse_descriptions(data,course_idx_dict)
     np.save('data/processed/gt_matrix', prereq_matrix)
+    create_graph(prereq_matrix)
 
 if __name__ == '__main__':
     main()
