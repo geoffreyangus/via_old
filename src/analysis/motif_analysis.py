@@ -7,6 +7,74 @@ from matplotlib import pyplot as plt
 
 # Utils
 
+def gen_config_model_rewire(graph, iterations=10000):
+    config_graph = graph
+    clustering_coeffs = []
+    ##########################################################################
+
+    counter = 0
+
+    graph_edges = []
+    for edge in config_graph.Edges():
+        graph_edges.append((edge.GetId()))
+
+    num_edges = len(graph_edges)
+
+    while counter < iterations:
+
+        if counter%100 == 0:
+            clustering_coeff = snap.GetClustCf(config_graph)
+            clustering_coeffs.append(clustering_coeff)
+
+        # Extracting Random Edge
+        rnd_edge_1_id = random.randint(0,num_edges-1)
+        rnd_edge_2_id = random.randint(0,num_edges-1)
+        rnd_edge_1 = graph_edges[rnd_edge_1_id]
+        rnd_edge_2 = graph_edges[rnd_edge_2_id]
+
+        # Random assignment of u1,v1 and u2,v2 to edge end points
+        if(random.randint(0,1)):
+            u = rnd_edge_1[0]
+            v = rnd_edge_1[1]
+            config_graph.DelEdge(u, v)
+        else:
+            u = rnd_edge_1[1]
+            v = rnd_edge_1[0]
+            config_graph.DelEdge(v, u)
+
+        if(random.randint(0,1)):
+            w = rnd_edge_2[0]
+            x = rnd_edge_2[1]
+            config_graph.DelEdge(w, x)
+        else:
+            w = rnd_edge_2[1]
+            x = rnd_edge_2[0]
+            config_graph.DelEdge(x, w)
+
+        for index in sorted([rnd_edge_1_id,rnd_edge_2_id], reverse=True):
+            del graph_edges[index]
+
+        # Testing if the craeted graph is a simple graph
+        is_simple_graph = True
+        if config_graph.AddEdge(u,w) == -2 or config_graph.AddEdge(v,x) == -2:
+            is_simple_graph = False
+
+        for node_id in (u,v,w,x):
+            if config_graph.IsEdge(node_id, node_id):
+                is_simple_graph = False
+
+        # don't update counter if not simple graph
+        if not is_simple_graph:
+            graph_edges.append(rnd_edge_1)
+            graph_edges.append(rnd_edge_2)
+        else:
+            counter += 1
+            graph_edges.append((u,w))
+            graph_edges.append((v,x))
+
+    ##########################################################################
+    return config_graph, clustering_coeffs
+
 def plot_degreee(degree_counts):
     '''
     Helper plotting code for question 3.1 Feel free to modify as needed.
