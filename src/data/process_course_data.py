@@ -22,7 +22,7 @@ class_index_path = 'data/processed/student_class_dict.pkl'
 def count_symmetries(mat):
     baseline_zeros = np.count_nonzero(mat)
     processed_zeros = np.count_nonzero(mat.transpose() - mat)
-    return processed_zeros - baseline_zeros
+    return (processed_zeros - baseline_zeros)/2
 
 def parse_descriptions(data, course_idx_dict):
     '''
@@ -72,6 +72,12 @@ def parse_descriptions(data, course_idx_dict):
 
 def read_descriptions():
     return pd.read_csv(course_description_path, names = ["id", "topic", "title","description"])
+
+def create_graph(prereq_matrix):
+    G = snap.TNGraph.New()
+    for i range(prereq_matrix.shape[0]):
+        for j in range(i):
+            #@`FFFUUUU~~~~~~CKkkkKKKKK`<=======3
 
 @click.command()
 def main():
