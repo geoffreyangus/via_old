@@ -113,7 +113,7 @@ def main(
     save_dir = '{}-{}-{}'.format(
         timestamp,
         graph_type + ('' if load_sequence else '-null'),
-        graph_size
+        str(graph_size)
     )
     save_dir = os.path.join(parent_directory, 'experiments', save_dir)
     os.makedirs(save_dir)
