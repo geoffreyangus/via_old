@@ -61,6 +61,7 @@ def main(load_dir, figure_name):
     plt.savefig(os.path.join(figs_dir, figure_name))
     return
     ### ratchet part pls forgive me ###
+    # And the lord spoketh thy sins are forgiven
 
     def extract_scores_from_tuples(graph_data):
         major_tuples = [(x['major'], x['score']) for x in graph_data]

@@ -9,7 +9,7 @@ import csv
 pathways_path = 'data/raw/raw_pathways.csv'
 
 def read_pathways():
-    return pd.read_csv(pathways_path, names = ["student_id", "course_id", "quarter_id", "quarter_name", "dropped", "curr_major", "final_major"]) 
+    return pd.read_csv(pathways_path, names = ["student_id", "course_id", "quarter_id", "quarter_name", "dropped", "curr_major", "final_major"])
 
 def process_pathways():
     """Processes the raw_pathways.csv file into a temporal matrix.
