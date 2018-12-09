@@ -59,13 +59,6 @@ def main(load_dir, figure_name):
     plt.legend()
     plt.title('Top 5000-Edge Weights of the Carta Network (DiscountNorm)')
     plt.savefig(os.path.join(figs_dir, figure_name))
-
-
-
-
-
-
-
     return
     ### ratchet part pls forgive me ###
 

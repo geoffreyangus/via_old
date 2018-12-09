@@ -17,9 +17,7 @@ import numpy as np
 
 from data.loader import load_graph, load_matrix
 from analysis.projections import PrereqGraphAnalyzer
-from projection_models.baseline import Baseline
-from projection_models.discount import Discount
-from projection_models.discount_normalized import DiscountNormalized
+from projection_models.models import *
 
 def create_bipartite_graph():
     '''
@@ -141,6 +139,8 @@ def main(
         model = Discount(adj_matrix)
     elif graph_type == 'discount_normalized':
         model = DiscountNormalized(adj_matrix)
+    elif graph_type == 'frequency':
+        model = Frequency(adj_matrix)
     else:
         raise Exception('Invalid graph type provided: {}'.format(graph_type))
 
