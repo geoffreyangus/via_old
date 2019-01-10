@@ -5,6 +5,9 @@ Reads in the course descriptions for all the available classes, and constructs
 a table which stores the direct pre-requisite relationships that are mentioned
 in the course descriptions.
 '''
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 import os
 import re
@@ -96,7 +99,7 @@ def parse_descriptions(data, course_idx_dict, verbose=True):
     return prereq_matrix
 
 def read_descriptions():
-    return pd.read_csv(course_description_path, names = ["id", "topic", "title","description"])
+    return pd.read_csv(course_description_path, names=["id", "topic", "title","description"])
 
 def create_graph(prereq_matrix):
     G = snap.TNGraph.New()
@@ -117,17 +120,17 @@ def read_top_100_class(file_path):
     return course_idx_dict_top_100
 
 @click.command()
+@click.argument('sequence_graph_path', type=str)
 @click.option(
     '--generate_top_100/--basic_gt',
     default=False
 )
-def main(generate_top_100):
-    assert(os.path.isfile('data/processed/student_class_dict.pkl'))
+def main(sequence_graph_path, generate_top_100):
     data = read_descriptions()
-    course_idx_dict = pickle.load(open(class_index_path, "r"))
+    course_idx_dict = pickle.load(open(sequence_graph_path, "r"))
     prereq_matrix = parse_descriptions(data,course_idx_dict)
-    np.save('data/processed/gt_matrix', prereq_matrix)
-    create_graph(prereq_matrix)
+    np.save('data/gt_matrices/gt_matrix', prereq_matrix)
+    #create_graph(prereq_matrix)
     # getting prereq matrix for top classes - used in modeling training
     if generate_top_100:
         course_idx_dict_top_100 = read_top_100_class(top_100_class_index_path)
