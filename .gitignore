@@ -103,9 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-data/graphs/
-data/processed/
-data/raw/
+data/
+__init__.py
 
 experiments/
 via/
