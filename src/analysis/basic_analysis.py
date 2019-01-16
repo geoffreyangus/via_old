@@ -117,7 +117,7 @@ def load_3_subgraphs(subgraph_directory):
 
 class Graph_Analyzer():
     def __init__(self, file_path):
-        graph_types = ["baseline", "discount", "discount-normalized", "ground_truth"]
+        graph_types = ["baseline", "discount-normalized", "ground_truth", "discount-learned", "discount"]
         self.file_path = file_path
         self.graph_name = [type for type in graph_types if type in file_path][0].title()
         graph = snap.LoadEdgeList(snap.PNGraph, file_path, 0, 1, '\t')
@@ -156,16 +156,20 @@ class Graph_Analyzer():
         for i in range(10):
             print("Beginning iteration number {}".format(i))
             G = snap.LoadEdgeList(snap.PNGraph, self.file_path, 0, 1)
-            config_graph, _ = gen_config_model_rewire(G, iterations=5000)
+            config_graph, _ = gen_config_model_rewire(G, iterations=300)
             self.enumerate_subgraph(config_graph, k=3, verbose=False)
             motifs_grid[i,:] = self.motif_counts
 
         mean_grid = np.mean(motifs_grid,0)
         std_grid = np.std(motifs_grid,0)
+        std_grid[std_grid == 0] = 1
 
         z_grid = (orig_motifs_grid - mean_grid)/std_grid
+        print(z_grid)
 
-        plt.plot(range(1,14),z_grid)
+        plt.bar(np.linspace(0.5, 12.5, num=13),z_grid, width=1)
+        plt.xlim(0, 14)
+        plt.xticks(np.arange(1, 14, 1.0))
         plt.xlabel('Motif Index')
         plt.ylabel('zscore')
         plt.title('Zscore of Motif Indices in {} Preqrequisite Graph'.format(self.graph_name))

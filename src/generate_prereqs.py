@@ -11,6 +11,9 @@ a student has attended Stanford.
 # imports
 import time
 import os
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 import click
 import numpy as np
@@ -88,14 +91,11 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
 
 @click.command()
 @click.argument('graph_type')
+@click.argument('sequence_graph_path', type=str)
 @click.option(
     '--graph_size',
     type=int,
     default=300
-)
-@click.option(
-    '--adjacency_matrix_path',
-    default='data/processed/sequence_matrix.npy'
 )
 @click.option(
     '--load_sequence/--random_sequence',
@@ -106,10 +106,11 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
     '--save_graph/--no_save_graph',
     default=False
 )
+
 def main(
     graph_type,
+    sequence_graph_path,
     graph_size,
-    adjacency_matrix_path,
     load_sequence,
     save_graph,
 ):
@@ -123,11 +124,13 @@ def main(
     )
     save_dir = os.path.join(parent_directory, 'experiments', save_dir)
     os.makedirs(save_dir)
+    print(sequence_graph_path)
 
     adj_matrix = np.load(
         os.path.join(
             parent_directory,
-            adjacency_matrix_path
+            sequence_graph_path,
+            #'data/processed/sequence_matrix.npy'
         )
     )
 
