@@ -20,16 +20,7 @@ class Frequency():
         student_min_enrollment=4
     ):
         self.adj_matrix = adj_matrix
-        student_enrollment_counts = np.count_nonzero(self.adj_matrix, axis=1)
-        student_enrollment_cutoff = student_enrollment_counts <= student_min_enrollment # Remove students who have taken less than x classes
-        self.adj_matrix = np.delete(self.adj_matrix, np.where(student_enrollment_cutoff), 0)
         print(self.adj_matrix.shape)
-
-        class_enrollment_counts = np.count_nonzero(self.adj_matrix, axis=0)
-        class_enrollment_cutoff = class_enrollment_counts <= class_min_total # Remove classes that have had less than x enrolled students
-        self.adj_matrix = np.delete(self.adj_matrix, np.where(class_enrollment_cutoff), 1)
-        print(self.adj_matrix.shape)
-
         self.G = snap.TNGraph.New()
 
     def add_prerequisite(self, class_tuple):
@@ -115,6 +106,34 @@ class Frequency():
                 baseline prerequisite relationship network between individual
                 classes.
         """
+        P = np.load('/Users/geoffreyangus/cs224w/carta-research/Via/data/processed/sequence_matrix_frequency.npy')
+
+        # Pulls out the 300 highest scoring class pairs.
+        print("Ranking k highest scoring class pairs...")
+        scores_list = []
+
+        k = num_classes * num_classes if k is None else k
+        for i in range(k):
+            prev_id, curr_id = np.unravel_index(
+                np.argmax(P), P.shape
+            )
+
+            new_edge = (prev_id, curr_id)
+            score = P[prev_id][curr_id]
+
+            scores_list.append((new_edge, score))
+            self.add_prerequisite(new_edge)
+
+            # Set class score to 0 to avoid interference in subsequent iterations
+            P[prev_id][curr_id] = 0.0
+
+        if save_path:
+            snap.SaveEdgeList(self.G, save_path)
+
+        return self.G, scores_list
+
+        #########################################################################
+
         print("Generating graph...")
         num_students, num_classes = self.adj_matrix.shape
         P = np.zeros((num_classes, num_classes))

@@ -2,6 +2,7 @@ import os
 import re
 import json
 
+from networkx.algorithms.community.quality import modularity
 import snap
 import pandas as pd
 import numpy as np
@@ -10,9 +11,12 @@ from matplotlib import pyplot as plt
 PATHWAYS_PATH = os.path.join(os.getcwd(), '..', 'data/raw/raw_pathways.csv')
 
 class PrereqGraphAnalyzer():
-    def __init__(self):
+    def __init__(self, class_list=None):
         self.pathways = self.load_pathways()
-        self.class_list = sorted(self.pathways["course_id"].unique())
+        if class_list is None:
+            self.class_list = sorted(self.pathways["course_id"].unique())
+        else:
+            self.class_list = class_list
         self.majors = []
         self.major_subgraphs = None
 
@@ -48,12 +52,10 @@ class PrereqGraphAnalyzer():
         # First major's index (should be 0)
         prev_idx = 0
         for idx, major in major_idxs[1:]:
-
             nids = snap.TIntV()
             for nid in range(prev_idx, idx):
                 if G.IsNode(nid):
                     nids.Add(nid)
-
             subgraphs.append(nids)
             prev_idx = idx
 
@@ -62,13 +64,10 @@ class PrereqGraphAnalyzer():
     def analyze_modularity(self, G, save_dir=None):
         if not self.major_subgraphs or self.G != G: # Checks pointer equality
             self.compute_major_subgraphs(G)
-
         modularities = []
-
         # Reminder: real_scores[i][j] is score of i as a prerequisite of j.
         for i in range(len(self.major_subgraphs)):
             m = snap.GetModularity(G, self.major_subgraphs[i])
-
             entry = dict()
             entry['major'] = self.majors[i]
             entry['score'] = m
@@ -97,11 +96,13 @@ class PrereqGraphAnalyzer():
             print("The {} subgraph has Clustering Coefficient {}".format(major, cf))
 
 
-    def analyze_graph(self, G, scores_list, save_dir):
+    def analyze_graph(self, G, scores_list, save_dir, class_list=None):
         """
         scores_list [((int, int), float)]: A list of tuples containing edge
             information and edge score.
         """
+        if class_list is None:
+            class_list = self.class_list
         scores_list = sorted(scores_list, key=lambda x: x[1], reverse=True)
         with open(os.path.join(save_dir, 'report.txt'), 'w+') as f:
             for edge, score in scores_list:
@@ -109,8 +110,8 @@ class PrereqGraphAnalyzer():
                 f.write(
                     '({}) {}\t->\t{} ({})\t - score: {}\n'.format(
                         src,
-                        self.class_list[src],
-                        self.class_list[dst],
+                        class_list[src],
+                        class_list[dst],
                         dst,
                         score,
                     )

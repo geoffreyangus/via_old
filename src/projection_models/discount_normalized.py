@@ -2,6 +2,7 @@
 This class augments the discounting projection with enrollment penalities.
 """
 
+import networkx as nx
 import snap
 import numpy as np
 
@@ -10,13 +11,21 @@ class DiscountNormalized():
         self,
         adj_matrix,
         gamma=0.9,
-        post_penalty=True
+        post_penalty=True,
     ):
 
         self.adj_matrix = adj_matrix
         self.gamma = gamma
         self.post_penalty = post_penalty
         self.G = snap.TNGraph.New()
+
+    def add_nx_prerequisite(self, class_tuple, score):
+        past_class, curr_class = class_tuple
+        if not past_class not in self.G:
+            self.G.add_node(past_class)
+        if not curr_class not in self.G:
+            self.G.add_node(curr_class)
+        self.G.add_edge(past_class,curr_class, weight=score)
 
     def add_prerequisite(self, class_tuple):
         past_class, curr_class = class_tuple
@@ -133,6 +142,8 @@ class DiscountNormalized():
 
         scores_list = []
         k = num_classes * num_classes if k is None else k
+        score = np.max(class_scores)
+        iters = 0
         for i in range(k):
             prev_id, curr_id = np.unravel_index(
                 np.argmax(class_scores), class_scores.shape
@@ -146,6 +157,9 @@ class DiscountNormalized():
 
             # Set class score to 0 to avoid interference in subsequent iterations
             class_scores[prev_id][curr_id] = 0
+            iters += 1
+            if iters % 100 == 0:
+                print("{} edges added...".format(iters))
 
         if save_path:
             snap.SaveEdgeList(self.G, save_path)

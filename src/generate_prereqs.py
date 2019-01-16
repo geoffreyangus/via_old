@@ -14,6 +14,7 @@ import os
 
 import click
 import numpy as np
+import json
 
 from data.loader import load_graph, load_matrix
 from analysis.projections import PrereqGraphAnalyzer
@@ -93,6 +94,10 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
     default=300
 )
 @click.option(
+    '--adjacency_matrix_path',
+    default='data/processed/sequence_matrix.npy'
+)
+@click.option(
     '--load_sequence/--random_sequence',
     default=True
 )
@@ -104,6 +109,7 @@ def create_null_matrix(adjacency_matrix, sample_size=1000):
 def main(
     graph_type,
     graph_size,
+    adjacency_matrix_path,
     load_sequence,
     save_graph,
 ):
@@ -121,7 +127,7 @@ def main(
     adj_matrix = np.load(
         os.path.join(
             parent_directory,
-            'data/processed/sequence_matrix.npy'
+            adjacency_matrix_path
         )
     )
 
@@ -139,6 +145,12 @@ def main(
         model = Discount(adj_matrix)
     elif graph_type == 'discount_normalized':
         model = DiscountNormalized(adj_matrix)
+    elif graph_type == 'discount_learned':
+        model = DiscountLearned(adj_matrix)
+        model.train(
+            y_actual=np.load('/Users/geoffreyangus/cs224w/final-project/Via/data/filtered/HUMBIO/gt_matrix.npy'),
+            # X=np.load('/Users/geoffreyangus/cs224w/carta-research/Via/data/processed/adjacency_tensor.npy')
+        )
     elif graph_type == 'frequency':
         model = Frequency(adj_matrix)
     else:
@@ -155,9 +167,10 @@ def main(
         graph_size,
         save_path=graph_path
     )
-
-    a = PrereqGraphAnalyzer()
-    a.analyze_graph(G, scores_list, save_dir)
+    with open('/Users/geoffreyangus/cs224w/final-project/Via/data/filtered/HUMBIO/student_class_dict.json') as f:
+        class_list = sorted(list(json.load(f).values()))
+    a = PrereqGraphAnalyzer(class_list=class_list)
+    a.analyze_graph(G, scores_list, save_dir, class_list=class_list)
     return G
 
 if __name__ == '__main__':
