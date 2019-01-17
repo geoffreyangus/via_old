@@ -1,10 +1,64 @@
 # Via
-Carta academic pathway analysis.
+This repository contains the source code and the parameters for the construction of various datasets and projection models, as part of the Via academic pathways project, sponsored by the Carta lab at Stanford University. The below sections are usage instructions. We are actively modifying this code, so if you have any questions please feel free to contact Geoffrey Angus (gangus@stanford.edu) or Richard Diehl Martinez (rdm@stanford.edu).
 
+### Overview
 
-# TODO:
+This repository makes use of `params.json` files in order to maximize reproducibility in experiments. There are (at time of writing) four commands you can currently execute.
 
-* Find Ground Truth Labels for Course Relationships
-* Calculate MRR given these ground truth values
-* Extract Recurring Motifs in the Graph
-* Extract Subgraphs from the Graph 
+### 0. Setup and Installation
+
+In order to use this repository, you must have a csv of enrollment data for your school. This is currently implemented to work with the raw data given graciously by the Carta lab at Stanford University.
+
+Please run the following command from within the repository upon cloning the repository:
+```
+pip install -e .
+```
+
+### 1. Create a Sequence Matrix Dataset
+
+The code implementing the pathways network requires a matrix `M` of shape `(num_students, num_classes)`, where `M[i][j] = t` means that student `i` took course `j` at timestep `t` (`t=1` is the student's first quarter at university, `t=2` is the student's second quarter, etc.). Zero-valued entries signify non-enrollment. We can generate this matrix by running the following command:
+
+```build_dataset <params_dir>```
+
+This command assumes that there is a `params.json` file within the directory provided that specifies the type of sequence dataset you would like to generate. The sequence matrix will be saved at `<params_dir>/sequences.npy` and each entry of the dataset will be mapped to course ids in `<params_dir>/course_indices.json`. Example params.json files can be found in the `data/pathways_datasets` directory.
+
+### 2. Create a Pathways Network
+
+Once you have generated a sequence matrix, one can generate a pathways network. Run the following command:
+
+```build_projection <params_dir>```
+
+Sample `params.json` files can be found in the `experiments` directory.
+
+### 3. Prepare Network for Visualization
+
+We have been using Cytoscape in order to create the visualizations for our pathways networks. Run the following command in order to create an enriched graph text file:
+
+```enrich_projection <params_dir>```
+
+The enriched text file will isolate the departments in which each of the course pairings reside, as well as creating an edge attribute differentiate between intra- and inter- departmental pathways. This is beneficial when styling the visualizations later on.
+
+### 4. Evaluating the Pathways Network (Under Construction)
+
+One can also run metrics on the pathways networks. Run the following command:
+
+```run_metrics <params_dir>```
+
+Note: you MUST create a metrics directory within the original experiment directory otherwise the program will not run. A successful `run_metrics` command will consist of the following file structure:
+
+```
+experiments/
+  # some number of sub-directories
+  ...
+    test_experiment/
+      metrics/
+        params.json
+      params.json
+      projection.txt
+```
+
+The `<params_dir>` argument thus refers to the `params.json` found in the metrics folder.
+
+---
+
+That's it for now. Again, please email Geoffrey Angus (gangus@stanford.edu) or Richard Diehl Martinez (rdm@stanford.edu) if you have any questions.
