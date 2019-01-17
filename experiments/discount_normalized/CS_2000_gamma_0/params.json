@@ -1,0 +1,26 @@
+{
+    "dataset_dir": "data/pathways_datasets/CS",
+    "graph_size": 10000,
+
+    "filters": {
+        "students": {
+            "min_courses": 4
+        },
+        "courses": {
+            "min_enrollment": 6,
+            "ignore": [
+                "IHUM*",
+                "PWR*",
+                "THINK*",
+                "OSP*",
+                "ATHLETIC*",
+                "WCT*"
+            ]
+        }
+    },
+
+    "model_class": "ExponentialDiscountNormalized",
+    "model_params": {
+        "gamma": 0.0
+    }
+}

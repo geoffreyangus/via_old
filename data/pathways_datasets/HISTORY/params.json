@@ -1,0 +1,9 @@
+{
+    "null_dataset": false,
+    "pathways_path": "/Users/geoffreyangus/cs224w/final-project/Via/data/raw/raw_pathways.csv",
+    "filters": {
+        "final_major": [
+            "HSTRY"
+        ]
+    }
+}

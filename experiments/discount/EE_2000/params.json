@@ -1,0 +1,17 @@
+{
+    "dataset_dir": "data/pathways_datasets/EE",
+    "graph_size": 2000,
+
+    "filters": {
+        "students": {
+            "min_courses": 4
+        },
+        "courses": {
+            "min_enrollment": 2,
+            "ignore": ["IHUM*", "PWR*"]
+        }
+    },
+
+    "model_class": "ExponentialDiscount",
+    "model_params": {}
+}

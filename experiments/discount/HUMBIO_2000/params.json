@@ -1,0 +1,18 @@
+{
+    "dataset_dir": "data/pathways_datasets/HUMBIO",
+    "graph_size": 2000,
+
+    "filters": {
+        "students": {
+            "min_courses": 4
+        },
+        "courses": {
+            "min_enrollment": 6,
+            "ignore": ["IHUM*", "PWR*"]
+        }
+
+    },
+
+    "model_class": "ExponentialDiscount",
+    "model_params": {}
+}

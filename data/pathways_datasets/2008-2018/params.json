@@ -1,0 +1,7 @@
+{
+    "null_dataset": false,
+    "pathways_path": "/Users/geoffreyangus/cs224w/final-project/Via/data/raw/raw_pathways.csv",
+    "filters": {
+        "min_quarter_id": 1092
+    }
+}

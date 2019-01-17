@@ -1,0 +1,20 @@
+{
+    "dataset_dir": "data/pathways_datasets/2008-2018",
+    "graph_size": 3000,
+    "filters": {
+        "students": {
+            "min_courses": 12
+        },
+        "courses": {
+            "min_enrollment": 6,
+            "ignore": [
+                "IHUM*",
+                "PWR*"
+            ]
+        }
+    },
+    "model_class": "ExponentialDiscountNormalized",
+    "model_params": {
+        "gamma": 0.5
+    }
+}

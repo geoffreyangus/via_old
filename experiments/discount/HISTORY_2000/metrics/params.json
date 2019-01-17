@@ -1,0 +1,15 @@
+{
+    "metrics": {
+        "department": {
+            "top_k": 20,
+            "use_undirected": true,
+            "fns": [
+                "modularity",
+                "clustering_coefficient"
+            ]
+        },
+        "subgraph_motifs": {
+            "use_undirected": false
+        }
+    }
+}

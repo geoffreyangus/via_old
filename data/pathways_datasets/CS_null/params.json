@@ -1,0 +1,10 @@
+{
+    "null_dataset": true,
+    "target_experiment": "/Users/geoffreyangus/cs224w/final-project/Via-refactor/data/pathways_datasets/CS/",
+
+    "dataset_params": {
+        "num_students": 5000,
+        "quarters": 12,
+        "quarterly_enrollment": 4
+    }
+}
