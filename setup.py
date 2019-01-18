@@ -1,10 +1,15 @@
-import setuptools
+'''setup.py
+Main setup file for distribution.
+'''
 
+__author__ = 'Geoffrey Angus & Richard Diehl Martinez'
+
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
-    long_description = fh.read()
+    LONG_DESCRIPTION = fh.read()
 
-setuptools.setup(
+setup(
     entry_points={
         'console_scripts': [
             'build_dataset=via.run:build_dataset',
@@ -15,14 +20,14 @@ setuptools.setup(
         ]
     },
     name="via",
-    version="0.0.1",
+    version="0.0.1dev",
     author="Geoffrey Angus and Richard Diehl",
     author_email="gangus@stanford.edu",
     description="Research software for the Carta Via project",
-    long_description=long_description,
+    long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     url="https://github.com/geoffreyangus/Via",
-    packages=setuptools.find_packages(include=['via']),
+    packages=find_packages(include=['via']),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -31,7 +36,10 @@ setuptools.setup(
     install_requires=[
         'networkx',
         'click',
-        'pandas'
+        'pandas',
+        'pytz',
+        'python-dateutil',
+        'numpy',
     ],
     python_requires='>=3',
 )
