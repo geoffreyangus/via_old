@@ -1,0 +1,19 @@
+#
+####### requirements.txt #######
+#
+###### Requirements without Version Specifiers ######
+
+click
+decorator
+networkx
+numpy
+pandas
+pip
+python-dateutil
+pytz
+setuptools
+
+###### Requirements with Version Specifiers ######
+
+six ==1.12.0
+wheel==0.32.3
