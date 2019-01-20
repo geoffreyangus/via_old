@@ -15,10 +15,9 @@ Then you can save your .csv file to the /data/raw folder.
 The general format and column names of your data must be consistent with the following example table:
 
 | student_id | course_id | quarter_id |    quarter_name   | dropped | curr_major | final_major |
-================================================================================================
+|------------|-----------|------------|-------------------|---------|------------|-------------|
 | 23Hkad2    | CS106A    | 2130       | 2000/2001, Winter | 0       | MATH-BS    | CS-BS       |
-...
-...
+| 12Lazc8    | CS106B    | 2132       | 2000/2001, Spring | 0       | MATH-BS    | SYMBO-BS    |
 ...
 
 The columns of your dataset must include exactly the following values:
