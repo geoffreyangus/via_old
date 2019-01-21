@@ -32,13 +32,13 @@ class DatasetBuilder(ParamsOperation):
 
     def apply_canceling_filters(self, df):
         logging.info('Applying filters...')
+        mask = pd.Series([True]*len(df))
         for key, arr in self.filters.items():
             if key not in df:
                 continue
-            mask = pd.Series([False]*df[key].size)
             for el in arr:
-                mask = mask | df[key].str.contains(el)
-            df = df[mask]
+                mask = mask & df[key].str.contains(el)
+        df = df[mask]
         return df
 
     def run(self):

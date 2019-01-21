@@ -14,82 +14,143 @@ class ProjectionAnalyzer(ParamsOperation):
     """
 
     """
-    def __init__(self, params_dir):
-        super().__init__(params_dir)
 
-        # checks if the metrics folder lives in an existing experiment
-        experiment_dir = os.path.dirname(params_dir)
-        # workaround to dirname unexpected behavior
-        if experiment_dir == params_dir[:-1]:
-            experiment_dir = os.path.dirname(experiment_dir)
+    def __init__(self, experiment_dir):
+        # including experiment params.json
+        super().__init__(experiment_dir)
 
-        projection_path = os.path.join(
-            experiment_dir, 'projection.txt'
+        params_path = os.path.join(
+            experiment_dir, 'metrics/params.json'
         )
         assert os.path.isfile(
-            projection_path
-        ), 'Projection text file must exist in metrics parent directory.'
+            params_path
+        ), 'metrics directory or matrics/params.json not found'
 
-        # including experiment params.json
-        with open(os.path.join(experiment_dir, 'params.json')) as f:
+        # loading metrics/params.json
+        with open(params_path) as f:
             params = json.load(f)
-            assert 'metrics' not in params.keys(), '"metrics" key found in experiment params.json'
+            assert 'metric_fns' in params.keys(
+            ), '"metric_fns" key not found in metrics/params.json'
             self.__dict__.update(params)
 
-        self.G = nx.read_weighted_edgelist(projection_path, create_using=nx.DiGraph)
+        self.g = nx.read_edgelist(
+            os.path.join(experiment_dir, 'projection.txt'),
+            create_using=nx.DiGraph, data=[
+                ('weight', float), ('p_prereq', float), ('p_course', float)])
+        self.department_clusters = None
 
     def run(self):
-        metrics = {}
-        if self.metrics['department']:
-            metrics['by_department'] = self.department_metrics()
+        results = {}
+        for metric_fn, kwargs in self.metric_fns.items():
+            results[metric_fn] = getattr(self, metric_fn)(**kwargs)
         with open(os.path.join(self.dir, 'metrics.json'), 'w') as f:
-            json.dump(metrics, f, indent=4)
+            json.dump(results, f, indent=4)
 
-    def department_metrics(self):
-        metrics_params = self.metrics['department']
-        metrics = {}
+    def num_courses(self):
+        res = Counter([get_prefix(course) for course in self.g.nodes])
+        res = sorted(
+            list(num_courses.items()), key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+        return res
 
-        num_courses = Counter([get_prefix(course) for course in self.G.nodes])
-        num_courses = sorted(
-            list(
-                num_courses.items()
-            ), key=lambda x: x[1], reverse=True
-        )[:metrics_params['top_k']]
-        metrics['num_courses'] = num_courses
-
-        departments = {get_prefix(course) for course in self.G.nodes}
-        if metrics_params['use_undirected']:
-            G = self.G.to_undirected()
+    def modularity(self, use_undirected=False):
+        if use_undirected:
+            g = self.g.to_undirected()
         else:
-            G = self.G
-        # cluster-based metrics
-        for fn in metrics_params['fns']:
-            res = []
-            for department in departments:
-                g1 = {
-                    course for course in G.nodes
-                    if get_prefix(course) == department
-                }
-                g2 = {
-                    course for course in G.nodes
-                    if get_prefix(course) != department
-                }
-                m = getattr(self, fn)(self.G, g1, g2)
-                res.append((department, m))
-            metrics[fn] = sorted(
-                res, key=lambda x: x[1], reverse=True
-            )[:metrics_params['top_k']]
-        return metrics
+            g = self.g
 
-    @staticmethod
-    def modularity(G, g1, g2):
-        return nx_modularity(G, [g1, g2])
+        if not self.department_clusters:
+            self.extract_departments()
 
-    @staticmethod
-    def clustering_coefficient(G, g1, g2):
-        cfs = clustering(G, g1)
-        return sum(cfs.values()) / len(cfs)
+        res = []
+        for department, cluster in self.department_clusters.items():
+            g2 = {i for i in g.nodes if i not in cluster}
+            res.append((department, nx_modularity(g, [cluster, g2])))
 
-    @staticmethod
-    def subgraph_motifs(G, use_undirected=False):
+        res = sorted(
+            res, key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+        return res
+
+    def clustering_coefficient(self, use_undirected=False):
+        if use_undirected:
+            g = self.g.to_undirected()
+        else:
+            g = self.g
+
+        if not self.department_clusters:
+            self.extract_departments()
+
+        res = []
+        for department, cluster in self.department_clusters.items():
+            cfs  = clustering(g, cluster)
+            res.append((department, sum(cfs.values()) / len(cfs)))
+
+        res = sorted(
+            res, key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+        return res
+
+    def department_out_degree(self, use_undirected=False):
+        if use_undirected:
+            g = self.g.to_undirected()
+        else:
+            g = self.g
+
+        res = []
+        for department, cluster in self.department_clusters:
+            nodes = sorted(list(cluster))
+            for node in nodes[1:]:
+                g = nx.contracted_nodes(g, nodes[0], node, self_loops=False)
+            res.append((department, g.out_degree(nodes[0], weight='score')))
+
+        res = sorted(
+            res, key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+
+    def department_in_degree(self, use_undirected=False):
+        if use_undirected:
+            g = self.g.to_undirected()
+        else:
+            g = self.g
+
+        res = []
+        for department, cluster in self.department_clusters:
+            nodes = sorted(list(cluster))
+            for node in nodes[1:]:
+                g = nx.contracted_nodes(g, nodes[0], node, self_loops=False)
+            res.append((department, g.in_degree(nodes[0], weight='score')))
+
+        res = sorted(
+            res, key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+
+    def department_internal_edges(self, use_undirected=False):
+        if use_undirected:
+            g = self.g.to_undirected()
+        else:
+            g = self.g
+
+        res = []
+        for department, cluster in self.department_clusters:
+            nodes = sorted(list(cluster))
+            for node in nodes[1:]:
+                g = nx.contracted_nodes(g, nodes[0], node, self_loops=True)
+            res.append((department, g.number_of_edges(nodes[0], nodes[0])))
+
+        res = sorted(
+            res, key=lambda x: x[1], reverse=True
+        )[:self.top_k]
+
+    def subgraph_motifs(self, use_undirected=False):
         print("subgraph_motifs not implemented. Skipping.")
+
+    def extract_departments(self):
+        self.department_clusters = dict()
+        prefixes = {get_prefix(course) for course in self.g.nodes}
+        for prefix in prefixes:
+            cluster = {
+                course for course in self.g.nodes
+                if get_prefix(course) == prefix
+            }
+            self.department_clusters[prefix] = cluster

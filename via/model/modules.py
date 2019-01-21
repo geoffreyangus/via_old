@@ -1,1 +1,1 @@
-from via.model.discount import ExponentialDiscount, ExponentialDiscountNormalized
+from via.model.discount import ExponentialDiscount, ExponentialDiscountNormalized, ExponentialDiscountConditional

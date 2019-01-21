@@ -3,15 +3,44 @@ This repository contains the source code and the parameters for the construction
 
 ### Overview
 
-This repository makes use of `params.json` files in order to maximize reproducibility in experiments. There are (at time of writing) four commands you can currently execute.
+This repository makes use of `params.json` files in order to maximize reproducibility in experiments. There are (at time of writing) four commands you can currently execute:
+build_dataset, build_projection, run_metrics and enrich_projection.
 
 ### 0. Setup and Installation
 
-In order to use this repository, you must have a csv of enrollment data for your school. This is currently implemented to work with the raw data given graciously by the Carta lab at Stanford University.
+In order to use this repository, you must have a csv of enrollment data for your school.
+We suggest you store this .csv file, by creating a folder under /data called 'raw'.
+Then you can save your .csv file to the /data/raw folder.
+
+The general format and column names of your data must be consistent with the following example table:
+
+| student_id | course_id | quarter_id |    quarter_name   | dropped | curr_major | final_major |
+|------------|-----------|------------|-------------------|---------|------------|-------------|
+| 23Hkad2    | CS106A    | 2130       | 2000/2001, Winter | 0       | MATH-BS    | CS-BS       |
+| 12Lazc8    | CS106B    | 2132       | 2000/2001, Spring | 0       | MATH-BS    | SYMBO-BS    |
+...
+
+The columns of your dataset must include exactly the following values:
+* student_id (hash string): a unique hash-id corresponding to an enrolled student
+* course_id (string): the id of a course that a student specified by student_id
+                     enrolled in during the quarter specified by quarter_id
+* quarter_id (integer): the id of the quarter during which a student specified by student_id
+                       took a certain course specified by course_id
+* quarter_name (string): a human legible string of the quarter corresponding to
+                        quarter_id
+* dropped (0/1): a boolean to indicate whether the class specified by course_id
+                 was dropped by the student specified by student_id.
+* curr_major (string): the current major of the student specified by student_id
+* final_major (string): the final major of the student specified by student_id
+
+
+Our model was trained using data kindly provided by the Carta lab at Stanford University. Unfortunately, we are unable to redistribute this data.
 
 Please run the following command from within the repository upon cloning the repository:
+
 ```
-pip install -e .
+pip install -r requirements.txt
+python setup.py develop
 ```
 
 ### 1. Create a Sequence Matrix Dataset

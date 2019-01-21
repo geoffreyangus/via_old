@@ -52,6 +52,15 @@ class Trainer(ParamsOperation):
                 deleted_course_idxs = (
                     deleted_course_idxs + list(np.where(enrollment_cutoff)[0])
                 )
+            # Remove classes that < (p_cutoff * 100)% of students have taken
+            if 'p_cutoff' in self.filters['courses']:
+                p_cutoff = self.filters['courses']['p_cutoff']
+                enrollment_counts = np.count_nonzero(sequence_matrix, axis=0)
+                course_p = enrollment_counts / sequence_matrix.shape[0]
+                course_p_cutoff = course_p <= p_cutoff
+                deleted_course_idxs = (
+                    deleted_course_idxs + list(np.where(course_p_cutoff)[0])
+                )
             if 'ignore' in self.filters['courses']:
                 for query in self.filters['courses']['ignore']:
                     matches = fnmatch.filter(index_to_course, query)
@@ -93,10 +102,13 @@ class Trainer(ParamsOperation):
         logging.info('Sequence matrix stats:')
         logging.info(f'Number of students:\t{sequence_matrix.shape[0]}')
         logging.info(f'Number of courses:\t{sequence_matrix.shape[1]}')
+
         if self.filters:
             sequence_matrix, index_to_course = self.apply_filters(
                 sequence_matrix, index_to_course
             )
+            course_to_index = {v: i for i, v in enumerate(index_to_course)}
+
         logging.info('Building projection graph...')
         A = self.model.build_projection(
             sequence_matrix
@@ -105,6 +117,13 @@ class Trainer(ParamsOperation):
         df = pd.DataFrame(
             edges, columns=['# prerequisite', 'course', 'score']
         )
+        # Additional information on the prerequisite course probability p(i)
+        if self.model_class == 'ExponentialDiscountConditional':
+            probs = self.model.get_course_probs(sequence_matrix)
+            for index, row in df.iterrows():
+                df.loc[index,'p_prereq'] = probs[course_to_index[df.loc[index, '# prerequisite']]]
+                df.loc[index,'p_course'] = probs[course_to_index[df.loc[index, 'course']]]
+
         df.to_csv(os.path.join(self.dir, 'projection.txt'),
             sep='\t', index=False
         )

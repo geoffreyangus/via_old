@@ -75,6 +75,12 @@ def enrich_projection_txt(projection_dir):
         header = f.readline()
         for line in f:
             attrs = line.split('\t')
+            if 'p_prereq' in header and 'p_course' in header:
+                src_p = attrs[-2]
+                dst_p = attrs[-1][:-1]
+            else:
+                src_p = 1.0
+                dst_p = 1.0
             idx = re.search("\d", attrs[0]).start()
             newsrc = attrs[0][:idx]
             idx = re.search("\d", attrs[1]).start()
@@ -82,12 +88,12 @@ def enrich_projection_txt(projection_dir):
             is_internal = 'internal' if newsrc == newdst else 'external'
             newlines.append(
                 '\t'.join(
-                    [is_internal, newsrc, attrs[0], newdst, attrs[1], attrs[2]]
+                    [is_internal, attrs[0], newsrc, src_p, attrs[1], newdst, dst_p, attrs[2], '\n']
                 )
             )
     with open(os.path.join(projection_dir, 'projection_enriched.txt'), 'w') as f:
         f.write('\t'.join(
-            ['is_internal', 'department', 'prereq', 'department', 'course', 'weight']
+            ['is_internal', 'prereq', 'department', 'p', 'course', 'department', 'p', 'weight']
         ))
         f.write('\n')
         for newline in newlines:
